@@ -1,3 +1,3 @@
 module RubyForGrafanaLoki
-    VERSION = '0.0.9'
+    VERSION = '0.0.90'
 end
