@@ -1,4 +1,7 @@
+require 'json'
 require 'base64'
+require 'net/http'
+require 'uri'
 
 module RubyForGrafanaLoki
   module Connection
@@ -7,48 +10,41 @@ module RubyForGrafanaLoki
     end
 
     def initialize(base_url, user_name, password, auth_enabled)
-      @base_url = base_url
+      @base_url = URI.parse(base_url)
       @user_name = user_name
       @password = password
       @auth_enabled = auth_enabled
     end
+
     def connection
-      Faraday.new(options) do |faraday|
-        faraday.adapter Faraday.default_adapter
-        faraday.request :json # Add this line to log request details
-        faraday.response :logger # Add this line to log response details to console
-        faraday.response :json, content_type: /\bjson$/ # Assume JSON response
-        faraday.request :url_encoded
+      Net::HTTP.new(@base_url.host, @base_url.port).tap do |http|
+        http.use_ssl = @base_url.scheme == 'https'
       end
     end
 
     def post(url, body)
-      response = connection.post(url) do |req|
-        req.headers['Content-Type'] = 'application/json'
-        req.body = JSON.generate(body)
+      uri = URI.join(@base_url, url)
+
+      request = Net::HTTP::Post.new(uri)
+      request['Content-Type'] = 'application/json'
+      request.body = JSON.generate(body)
+
+      if @auth_enabled
+        request['Authorization'] = "Basic #{base64_encode_credentials(@user_name, @password)}"
       end
 
-      if response.success?
+      response = connection.request(request)
+
+      if response.is_a?(Net::HTTPSuccess)
         JSON.parse(response.body)
       else
-        raise "Failed to make POST request. Response code: #{response.status}, Response body: #{response.body}"
+        raise "Failed to make POST request. Response code: #{response.code}, Response body: #{response.body}"
       end
     end
 
     def base64_encode_credentials(user_name, password)
       credentials = "#{user_name}:#{password}"
       Base64.strict_encode64(credentials)
-    end
-    def options
-      headers = {
-        accept: 'application/json',
-        'Content-Type' => 'application/json',
-      }
-      headers['Authorization'] = "Basic #{base64_encode_credentials(@user_name, @password)}" if @auth_enabled
-      {
-        url: @base_url,
-        headers: headers
-      }
     end
   end
 end
