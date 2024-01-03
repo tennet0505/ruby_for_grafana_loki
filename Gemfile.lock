@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    ruby_for_grafana_loki (0.0.92)
+    ruby_for_grafana_loki (0.0.93)
       rspec
       zeitwerk (~> 2.4)
 

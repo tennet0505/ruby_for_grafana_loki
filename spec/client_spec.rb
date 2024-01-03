@@ -26,7 +26,6 @@ RSpec.describe Client do
       expect(client.max_buffer_size).to eq(20)
       expect(client.interaction_interval).to eq(1)
       expect(client.logger).to be_a(InterceptingLogger)
-      expect(client.connection).to be_a(Faraday::Connection)
       # Add other expectations based on your implementation
     end
   end

@@ -1,4 +1,3 @@
-require 'faraday'
 require 'zeitwerk'
 
 loader = Zeitwerk::Loader.for_gem
