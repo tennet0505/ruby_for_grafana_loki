@@ -1,47 +1,53 @@
 require 'json'
-require 'base64'
 require 'net/http'
 require 'uri'
 
 module RubyForGrafanaLoki
   module Connection
-    def self.create(base_url, user_name, password, auth_enabled)
-      new(base_url, user_name, password, auth_enabled).connection
-    end
-
     def initialize(base_url, user_name, password, auth_enabled)
-      @base_url = URI.parse(base_url)
+      uri = URI.parse(base_url)
+      @base_url = uri
       @user_name = user_name
       @password = password
       @auth_enabled = auth_enabled
     end
-
     def connection
-      Net::HTTP.new(@base_url.host, @base_url.port).tap do |http|
-        http.use_ssl = @base_url.scheme == 'https'
-      end
+      http = Net::HTTP.new(@base_url.to_s, @base_url.port)
+      http.use_ssl = @base_url.scheme == 'https'
+      http.read_timeout = 30 # Adjust as needed
+      http.open_timeout = 30 # Adjust as needed
+      http
     end
-
-    def post(url, body)
-      uri = URI.join(@base_url, url)
-
-      request = Net::HTTP::Post.new(uri)
+    def post(url_loki, body)
+      url = @base_url.to_s + url_loki
+      username = @user_name
+      password = @password
+      send_authenticated_post(url, body, username, password)
+    end
+    def send_authenticated_post(url, body, username, password)
+      uri = URI.parse(url)
+      request = Net::HTTP::Post.new(uri.path)
       request['Content-Type'] = 'application/json'
-      request.body = JSON.generate(body)
+      request.body = body
 
-      if @auth_enabled
-        request['Authorization'] = "Basic #{base64_encode_credentials(@user_name, @password)}"
+      if username && password && @auth_enabled
+        request.basic_auth(username, password)
+      else
+        raise "Username or password is nil."
       end
 
-      response = connection.request(request)
+      response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == 'https') do |http|
+        http.request(request)
+      end
 
       if response.is_a?(Net::HTTPSuccess)
         JSON.parse(response.body)
       else
         raise "Failed to make POST request. Response code: #{response.code}, Response body: #{response.body}"
       end
+    rescue StandardError => e
+      puts "Error: #{e.message}"
     end
-
     def base64_encode_credentials(user_name, password)
       credentials = "#{user_name}:#{password}"
       Base64.strict_encode64(credentials)

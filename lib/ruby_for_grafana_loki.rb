@@ -8,13 +8,12 @@ module RubyForGrafanaLoki
     def create_logger(config_file_path)
       config = load_config(config_file_path)
 
-      connection_instance =  MyConnection.create(
+      connection_instance =  MyConnection.new(
         config['base_url'],
         config['user_name'],
         config['password'],
         config['auth_enabled']
       )
-
       client = Client.new(config)
       logger = InterceptingLogger.new(intercept_logs: config['intercept_logs'])
       logger.client = client

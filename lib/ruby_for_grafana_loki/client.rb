@@ -5,7 +5,6 @@ module RubyForGrafanaLoki
 
   class Client
     include RubyForGrafanaLoki::Connection
-    # LOGS_TYPE = %w(ERROR WARN FATAL INFO DEBUG).freeze
 
     attr_accessor :job_name
     attr_accessor :host_name
@@ -76,7 +75,6 @@ module RubyForGrafanaLoki
 
       json_payload = JSON.generate(payload)
       uri = '/loki/api/v1/push'
-
       @connection.post(uri, json_payload)
 
       @log_buffer.clear
